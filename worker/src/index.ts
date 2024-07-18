@@ -1,7 +1,6 @@
 import { createClient } from "redis";
 const client = createClient();
 
-
 async function processSubmission(submission: string) {
     const { problemId, code, language } = JSON.parse(submission);
 
@@ -15,6 +14,7 @@ async function processSubmission(submission: string) {
     // Send it to the Pub Sub
     await new Promise(resolve => setTimeout(resolve, 1000));
     console.log(`Finished processing submission for problemId ${problemId}`);
+    client.publish("problem_done", JSON.stringify({ problemId, status: "TLE" }))
 }
 
 
@@ -29,6 +29,9 @@ async function startWorker() {
                 const submission = await client.brPop("problems", 0);
                 // const response = await client.rPop("problems");
                 await processSubmission(submission.element);
+
+                // A probelem can occur here, if this redis server goes down here, so in this case we
+                // need some kind of logic that -> while popping out some instance form the queue, if we failed then push back the stuff in to the queue again or something else
             } catch (error) {
                 console.log('Error processing Submission', error);
                 // we can have the logic here to push the submission back into the queue or
